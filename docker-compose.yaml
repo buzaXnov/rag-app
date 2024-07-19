@@ -1,0 +1,64 @@
+services:
+  embedding_model:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.embedding
+    ports:
+      - "8080:8080"
+    restart: on-failure
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - rag_net
+
+  generation_model:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.generation
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./models/generation_model.llamafile:/model/generation_model.llamafile
+    restart: on-failure
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8081" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - rag_net
+
+  app:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.app
+    depends_on:
+      - embedding_model
+      - generation_model
+    restart: on-failure
+    environment:
+      - EMBEDDING_MODEL_URL=http://embedding_model:8080
+      - GENERATION_MODEL_URL=http://generation_model:8081
+    ports:
+      - "5000:5000"
+    networks:
+      - rag_net
+
+  ui:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.ui
+    ports:
+      - "8501:8501"
+    restart: on-failure
+    depends_on:
+      - app
+    networks:
+      - rag_net
+
+networks:
+  rag_net:
+    driver: bridge

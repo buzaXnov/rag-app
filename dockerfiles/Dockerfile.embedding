@@ -1,0 +1,28 @@
+ARG DEBIAN_VERSION=bullseye
+FROM debian:${DEBIAN_VERSION}-slim AS final
+
+# Set working directory.
+WORKDIR /usr/src/app
+
+RUN apt-get update -y && apt-get install -y curl wget
+
+# COPY models/embedding_model.llamafile /usr/src/app/llamafile
+RUN wget -O llamafile "https://huggingface.co/Mozilla/mxbai-embed-large-v1-llamafile/resolve/main/mxbai-embed-large-v1-f16.llamafile"
+
+# Make llamafile executable.
+RUN chmod +x /usr/src/app/llamafile
+
+# Create user to run llamafile as non-root.
+RUN addgroup --gid 1000 user
+RUN adduser --uid 1000 --gid 1000 --disabled-password --gecos "" user
+
+# Switch to user.
+USER user
+
+EXPOSE 8080
+
+# Set entrypoint.
+ENTRYPOINT ["/bin/sh", "/usr/src/app/llamafile"]
+
+# Set default command.
+CMD ["--server", "--nobrowser", "--host", "0.0.0.0", "--port", "8080"]
